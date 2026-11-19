@@ -1,0 +1,44 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+
+# Node
+node_modules/
+dist/
+.vite/
+*.tsbuildinfo
+
+# Environment & secrets
+.env
+.env.*
+!.env.example
+!.env.template
+
+# Private runtime data
+backend/storage/
+backend/backups/
+*.log
+logs/
+
+# Generated artifacts
+graphify-out/
+coverage/
+*.dump
+*.sql.gz
+*.bak
+
+# Editors / OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Playwright
+test-results/
+playwright-report/
