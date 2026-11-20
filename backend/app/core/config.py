@@ -43,7 +43,7 @@ class Settings(BaseSettings):
 
     ai_provider: str = "gemini"
     gemini_api_key: str | None = None
-    gemini_model: str = "gemini-2.0-flash"
+    gemini_model: str = "gemini-3.5-flash-lite"
     ai_timeout_seconds: int = Field(default=90, ge=10, le=300)
     prompt_version: str = "analysis-v1"
 

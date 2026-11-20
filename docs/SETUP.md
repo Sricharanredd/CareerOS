@@ -118,7 +118,9 @@ Never edit an applied migration. Never call `create_all` outside tests.
 ## 6. Backup / restore (execute before calling this production-ready)
 
 ```powershell
+New-Item -ItemType Directory -Force backups | Out-Null
 mysqldump -u careeros_app -p --single-transaction --routines --databases careeros > backups\careeros-$(Get-Date -f yyyyMMdd-HHmm).sql
+Get-Item backups\*.sql | Sort-Object LastWriteTime -Descending | Select-Object -First 1
 ```
 
 Restore into a scratch schema first, verify row counts, then swap. Copy `backend/storage/`

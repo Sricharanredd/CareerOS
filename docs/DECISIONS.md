@@ -59,4 +59,52 @@ Accepted. FastAPI exits `yield` dependencies after sending the response, so a cl
 immediately refetches a list after a mutation could read pre-commit rows. `app/core/routing.py`
 defines `CommittingAPIRouter`/`CommitBeforeResponseRoute`; the session is exposed on
 `request.state` by `get_db` and committed once the endpoint has produced its response. The
-teardown commit remains as a fallback for requests that bypass a route handler.
+teardown commit remains as a fallback for requests that bypass a route handler. An
+`IntegrityError` raised by the pre-response commit is not translated into the error
+envelope; services must keep flushing so constraint failures surface inside the handler.
+Fixing the residual 500 path is deferred to the v2 schema work.
+
+## ADR-012 — `tzdata` is a runtime dependency (D11)
+Accepted. Windows has no system IANA timezone database, so `zoneinfo.ZoneInfo("UTC")`
+raises `ZoneInfoNotFoundError` on a fresh machine. `tzdata` is pinned in
+`backend/requirements.txt` and installed with the rest of the runtime dependencies. No
+application code uses `ZoneInfo` yet; the first consumer is the owner-timezone work in v2.
+
+## ADR-013 — `Application.follow_up_on` is derived at read time (D12)
+Accepted. The earliest pending follow-up due date is authoritative. The serializer computes
+`MIN(follow_up.due_on)` for pending rows; the `application.follow_up_on` column becomes
+dormant and is dropped in a later migration (M6). Until that migration, the column stays in
+the table so the previous values remain recoverable; writes to it are removed together with
+the projection, not before.
+
+## ADR-014 — One-time backfill preserves the existing follow-up date (D13)
+Accepted. Before derivation ships, rows whose `follow_up_on` is earlier than their earliest
+pending follow-up (or that have none) get a pending follow-up inserted from the stored
+value. Deferred data (a stale date) is preserved rather than silently discarded, and no
+derived value changes on deploy day.
+
+## ADR-015 — Explicit up/down ordering, no drag-and-drop (D14)
+Accepted. Kanban columns sort by a server-defined order (updated or created) and each card
+can be moved with an explicit control. Drag-and-drop needs pointer, keyboard and touch
+fallbacks plus an ordering column; it is not part of v1.
+
+## ADR-016 — Last contact is global, not per-application (D15)
+Accepted. "Last contact" is the newest interaction timestamp for the owner, used where a
+single recency signal is needed. Per-application recency stays available by filtering the
+interactions relation; no denormalized per-application column is added.
+
+## ADR-017 — Deleting a contact cascades to its interactions (D16)
+Accepted. Interactions belong to a contact and have no meaning without it. The foreign key
+is `ON DELETE CASCADE`, matching the owner-scoped delete endpoint, which is the only path
+that removes a contact.
+
+## ADR-018 — JD/company consistency is a separate change (D17)
+Accepted. `validate_references` currently checks ownership only, so a job description from
+company A can be attached to an application for company B. The fix validates
+`job_description.company_id == application.company_id` in the service layer and adds a
+regression test. It is deliberately not bundled into Stage 0 static validation.
+
+## ADR-019 — Interview rounds stay free text (D18)
+Accepted. `interview.round_no` remains an integer the owner chooses, and any round label
+("System design", "Bar raiser") lives in the free-text fields. Auto-numbering and a rounds
+catalog are out of scope; the API only supplies the next integer as a default.
