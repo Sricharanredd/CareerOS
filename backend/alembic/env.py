@@ -12,7 +12,9 @@ import app.db.models  # noqa: F401  (registers every model with the metadata)
 config = context.config
 
 if config.config_file_name is not None:
-    fileConfig(config.config_file_name)
+    # Without this flag, fileConfig disables every logger that already exists, including the
+    # application's own — so a migration run inside the same process silences app error logs.
+    fileConfig(config.config_file_name, disable_existing_loggers=False)
 
 target_metadata = Base.metadata
 settings = get_settings()

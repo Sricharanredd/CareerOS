@@ -182,12 +182,14 @@ function Trend({ data }: { data: Dashboard }) {
         {data.applications_trend.map((point) => (
           <div key={point.bucket} className="group flex h-full flex-1 flex-col justify-end">
             <div
+              role="img"
+              aria-label={`${point.count} applications in week of ${formatDate(point.bucket)}`}
               className="relative w-full rounded-t bg-accent/75 transition-colors group-hover:bg-accent"
               style={{ height: `${Math.max((point.count / max) * 100, point.count ? 6 : 2)}%` }}
               title={`${point.count} in week of ${formatDate(point.bucket)}`}
             >
               {point.count > 0 && (
-                <span className="absolute -top-5 left-1/2 -translate-x-1/2 text-[10px] font-medium text-muted opacity-0 transition-opacity group-hover:opacity-100">
+                <span className="absolute -top-5 left-1/2 -translate-x-1/2 text-[10px] font-medium text-muted opacity-0 transition-opacity group-hover:opacity-100 max-sm:opacity-100">
                   {point.count}
                 </span>
               )}
@@ -196,7 +198,7 @@ function Trend({ data }: { data: Dashboard }) {
         ))}
       </div>
       <div className="mt-2 flex justify-between text-[10px] text-subdued">
-        <span>{formatDate(data.applications_trend[0]?.bucket ?? new Date().toISOString())}</span>
+        <span>{formatDate(data.applications_trend[0]?.bucket ?? new Date())}</span>
         <span>
           {data.applications_trend.length > 2
             ? formatDate(data.applications_trend[Math.floor(data.applications_trend.length / 2)].bucket)

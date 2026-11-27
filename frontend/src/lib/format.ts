@@ -16,7 +16,7 @@ export function parseDate(value: string | Date): Date {
   return new Date(hasZone ? value : `${value}Z`);
 }
 
-export function formatDate(value: string | null | undefined): string {
+export function formatDate(value: string | Date | null | undefined): string {
   if (!value) return "—";
   return dateFormatter.format(parseDate(value));
 }

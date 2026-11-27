@@ -2,16 +2,14 @@
 
 Uses the public REST endpoint through httpx so no vendor SDK is required. The
 API key is read from settings and never logged.
+
+Legacy and gate-denied: Gemini is never selected for resume analysis. It still follows the
+same one-request contract as every adapter, so retries are owned by ``app.ai.retry``.
 """
 
 from __future__ import annotations
 
-import json
-import logging
-import time
-
 import httpx
-from pydantic import ValidationError
 
 from app.ai.base import (
     AnalysisProvider,
@@ -23,17 +21,17 @@ from app.ai.base import (
 )
 from app.ai.output import AnalysisOutput
 from app.ai.prompts import build_prompt, build_repair_prompt
+from app.ai.repair import validate_or_repair
 from app.core.config import Settings
-
-logger = logging.getLogger("careeros.ai")
 
 ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
 RETRYABLE_STATUS = {429, 500, 502, 503, 504}
-MAX_REPAIRS = 1
+MAX_REPAIRS = 0
 
 
 class GeminiProvider(AnalysisProvider):
     name = "gemini"
+    scope = "model"
 
     def __init__(self, settings: Settings) -> None:
         if not settings.gemini_api_key:
@@ -50,19 +48,12 @@ class GeminiProvider(AnalysisProvider):
             company_name=request.company_name,
         )
         raw = self._generate(prompt)
-        try:
-            return AnalysisOutput.model_validate(_loads(raw))
-        except (ValidationError, ValueError) as exc:
-            logger.warning("analysis output failed validation", extra={"provider": self.name})
-            repaired = self._generate(
-                build_repair_prompt(prompt, _describe_validation_error(exc)), temperature=0.0
-            )
-            try:
-                return AnalysisOutput.model_validate(_loads(repaired))
-            except (ValidationError, ValueError) as exc2:
-                raise ProviderInvalidOutput(
-                    "The model returned output that did not match the expected structure."
-                ) from exc2
+        return validate_or_repair(
+            raw,
+            lambda hint: self._generate(build_repair_prompt(prompt, hint), temperature=0.0),
+            provider_name=self.name,
+            max_repairs=MAX_REPAIRS,
+        )
 
     def _generate(self, prompt: str, *, temperature: float = 0.2) -> str:
         payload = {
@@ -79,9 +70,6 @@ class GeminiProvider(AnalysisProvider):
         url = ENDPOINT.format(model=self.model)
 
         response = self._post(url, payload)
-        if response.status_code in RETRYABLE_STATUS:
-            time.sleep(1.5)
-            response = self._post(url, payload)
 
         if response.status_code in RETRYABLE_STATUS:
             raise ProviderUnavailable(
@@ -135,32 +123,8 @@ def _first_text(body: dict) -> str:
     return text
 
 
-def _loads(raw: str) -> dict:
-    cleaned = raw.strip()
-    if cleaned.startswith("```"):
-        cleaned = cleaned.split("```", 2)[1] if cleaned.count("```") >= 2 else cleaned
-        if cleaned.startswith("json"):
-            cleaned = cleaned[4:]
-    return json.loads(cleaned)
-
-
-def _describe_validation_error(exc: Exception) -> str:
-    if isinstance(exc, ValidationError):
-        return "; ".join(
-            f"{'.'.join(str(part) for part in error['loc'])}: {error['msg']}"
-            for error in exc.errors()[:8]
-        )
-    return str(exc)[:400]
-
-
 def _provider_message(response: httpx.Response) -> str:
-    try:
-        body = response.json()
-        message = (body.get("error") or {}).get("message")
-        if message:
-            return str(message)[:300]
-    except ValueError:
-        pass
+    """Fixed text only: provider bodies are never echoed into errors or job rows."""
     if response.status_code == 403:
         return "The AI provider rejected the API key."
     if response.status_code == 400:

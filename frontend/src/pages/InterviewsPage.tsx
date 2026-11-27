@@ -81,7 +81,7 @@ function InterviewCard({
 }) {
   return (
     <li className="rounded-xl border border-line bg-surface p-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-sm font-semibold text-fg">Round {interview.round_no}</span>
@@ -139,7 +139,7 @@ function InterviewCard({
             </p>
           )}
         </div>
-        <div className="flex shrink-0 items-center gap-1.5">
+        <div className="flex items-center justify-end gap-1.5 sm:shrink-0">
           <Button size="sm" variant="secondary" onClick={onOutcome}>
             {interview.outcome === "pending" ? "Record outcome" : "Edit outcome"}
           </Button>

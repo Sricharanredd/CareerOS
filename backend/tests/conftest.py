@@ -20,6 +20,9 @@ os.environ.setdefault("SECRET_KEY", "test-secret-key-0123456789abcdef0123456789a
 os.environ.setdefault("LOG_LEVEL", "WARNING")
 # Never let a developer's real key make the suite call an external provider.
 os.environ["GEMINI_API_KEY"] = ""
+os.environ["CLOUDFLARE_API_TOKEN"] = ""
+os.environ["CLOUDFLARE_ACCOUNT_ID"] = ""
+os.environ["AI_ALLOW_TRAINING_PROVIDERS"] = "false"
 os.environ["STORAGE_DIR"] = tempfile.mkdtemp(prefix="careeros-test-")
 
 from app.core.config import Settings, get_settings  # noqa: E402
@@ -70,6 +73,12 @@ def migrated_schema():
 def clean_state(migrated_schema):
     _reset_schema()
     auth_service.reset_limiter()
+    # Health/breaker and quota state are process-local; isolate every test from the previous one.
+    from app.ai.health import health_store
+    from app.ai.quota import quota_store
+
+    health_store.reset()
+    quota_store.reset()
     yield
 
 
@@ -111,3 +120,26 @@ def company(auth_client: TestClient) -> dict:
     )
     assert response.status_code == 201, response.text
     return response.json()
+
+
+@pytest.fixture
+def ai_settings():
+    """Factory for AI settings that never reads a real credential from backend/.env."""
+
+    def make(**overrides) -> Settings:
+        values = {
+            "secret_key": "test-secret-key-0123456789abcdef0123456789abcdef",
+            "database_url": "mysql+pymysql://user:pass@127.0.0.1:3306/careeros",
+            "ai_provider_order": "cloudflare",
+            "ai_approved_providers": "cloudflare",
+            "cloudflare_api_token": "test-token",
+            "cloudflare_account_id": "test-account",
+            "cloudflare_model": "@cf/meta/llama-3.3-70b-instruct-fp8-fast",
+            "gemini_api_key": None,
+            "ai_allow_training_providers": False,
+            "ai_free_only": True,
+        }
+        values.update(overrides)
+        return Settings(**values)
+
+    return make

@@ -40,8 +40,8 @@ export function SectionTitle({
   action?: ReactNode;
 }) {
   return (
-    <div className="flex items-start justify-between gap-3">
-      <div>
+    <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
+      <div className="min-w-0">
         <h2 className="text-sm font-semibold text-fg">{title}</h2>
         {hint && <p className="mt-0.5 text-xs text-subdued">{hint}</p>}
       </div>

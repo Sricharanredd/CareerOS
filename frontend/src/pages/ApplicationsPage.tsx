@@ -204,9 +204,9 @@ function ApplicationBoard({
   }
 
   return (
-    <div className="scroll-area flex gap-3 overflow-x-auto p-4">
+    <div className="scroll-area flex snap-x gap-3 overflow-x-auto p-4">
       {columns.map((column) => (
-        <section key={column.status} className="w-64 shrink-0">
+        <section key={column.status} className="w-64 shrink-0 snap-start">
           <header className="mb-2 flex items-center justify-between px-1">
             <span className="flex items-center gap-1.5 text-[13px] font-medium text-fg">
               <span className={clsx("h-1.5 w-1.5 rounded-full", STATUS_DOT[column.status])} aria-hidden />

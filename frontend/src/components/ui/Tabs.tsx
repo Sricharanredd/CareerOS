@@ -13,7 +13,13 @@ export function Tabs<T extends string>({
   className?: string;
 }) {
   return (
-    <div className={clsx("flex items-center gap-1 border-b border-line", className)} role="tablist">
+    <div
+      className={clsx(
+        "scroll-area flex items-center gap-1 overflow-x-auto border-b border-line",
+        className,
+      )}
+      role="tablist"
+    >
       {items.map((item) => {
         const active = item.value === value;
         return (
@@ -24,7 +30,7 @@ export function Tabs<T extends string>({
             aria-selected={active}
             onClick={() => onChange(item.value)}
             className={clsx(
-              "relative -mb-px flex items-center gap-1.5 border-b-2 px-3 py-2.5 text-sm font-medium transition-colors",
+              "relative -mb-px flex shrink-0 items-center gap-1.5 whitespace-nowrap border-b-2 px-3 py-2.5 text-sm font-medium transition-colors",
               active
                 ? "border-accent text-fg"
                 : "border-transparent text-muted hover:border-line-strong hover:text-fg",

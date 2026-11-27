@@ -245,15 +245,7 @@ export function ApplicationDrawer({
       open={Boolean(applicationId)}
       onClose={onClose}
       width="max-w-2xl"
-      title={
-        application ? (
-          <span className="flex items-center gap-2">
-            <span className="truncate">{application.title}</span>
-          </span>
-        ) : (
-          "Application"
-        )
-      }
+      title={application ? application.title : "Application"}
       subtitle={
         application && (
           <span className="flex flex-wrap items-center gap-2">

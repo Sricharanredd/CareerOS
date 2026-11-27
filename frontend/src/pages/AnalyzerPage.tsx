@@ -1,6 +1,5 @@
 import clsx from "clsx";
 import {
-  AlertTriangle,
   ArrowRight,
   CheckCircle2,
   FileSearch,
@@ -21,6 +20,7 @@ import { Button } from "@/components/ui/Button";
 import { EmptyState, ErrorState, InlineAlert, LoadingBlock } from "@/components/ui/Feedback";
 import { Field, Select, Textarea } from "@/components/ui/Form";
 import { Card, PageHeader, SectionTitle } from "@/components/ui/Layout";
+import { ConfirmDialog } from "@/components/ui/Overlay";
 import { Tabs } from "@/components/ui/Tabs";
 import { errorMessage } from "@/lib/api";
 import { formatRelative } from "@/lib/format";
@@ -270,8 +270,13 @@ function HistoryRow({
               <AnalysisStatusBadge status={job.status} />
             </span>
             <span className="mt-0.5 block truncate text-xs text-muted">{target}</span>
+            <span className="mt-0.5 block text-[11px] text-subdued sm:hidden">
+              {formatRelative(job.created_at)}
+            </span>
           </span>
-          <span className="shrink-0 text-[11px] text-subdued">{formatRelative(job.created_at)}</span>
+          <span className="hidden shrink-0 text-[11px] text-subdued sm:block">
+            {formatRelative(job.created_at)}
+          </span>
         </button>
         <button
           type="button"
@@ -615,52 +620,33 @@ export function AnalyzerPage() {
         </div>
       </div>
 
-      {deleteTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div
-            className="fixed inset-0 bg-[#0a0e16]/55 backdrop-blur-[2px]"
-            onClick={() => setDeleteTarget(null)}
-            aria-hidden
-          />
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-label="Delete analysis"
-            className="relative z-10 w-full max-w-sm rounded-2xl border border-line bg-surface p-6 shadow-pop"
-          >
-            <div className="flex items-center gap-2 text-danger">
-              <AlertTriangle className="h-4 w-4" aria-hidden />
-              <h2 className="text-base font-semibold">Delete this analysis?</h2>
-            </div>
-            <p className="mt-2 text-sm leading-relaxed text-muted">
+      <ConfirmDialog
+        open={Boolean(deleteTarget)}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={() => {
+          if (!deleteTarget) return;
+          remove.mutate(deleteTarget.id, {
+            onSuccess: () => {
+              if (activeJobId === deleteTarget.id) setActiveJobId(null);
+              setDeleteTarget(null);
+            },
+          });
+        }}
+        title="Delete this analysis?"
+        description={
+          deleteTarget && (
+            <>
               The stored result and findings for{" "}
               <span className="font-medium text-fg">
                 {deleteTarget.resume_version.resume_name} v{deleteTarget.resume_version.version_no}
               </span>{" "}
               will be removed. This cannot be undone.
-            </p>
-            <div className="mt-5 flex justify-end gap-2">
-              <Button variant="ghost" onClick={() => setDeleteTarget(null)} disabled={remove.isPending}>
-                Cancel
-              </Button>
-              <Button
-                variant="danger"
-                loading={remove.isPending}
-                onClick={() => {
-                  remove.mutate(deleteTarget.id, {
-                    onSuccess: () => {
-                      if (activeJobId === deleteTarget.id) setActiveJobId(null);
-                      setDeleteTarget(null);
-                    },
-                  });
-                }}
-              >
-                Delete
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+            </>
+          )
+        }
+        confirmLabel="Delete"
+        loading={remove.isPending}
+      />
 
       <div className="flex items-center gap-2 rounded-xl border border-line bg-surface px-4 py-3 text-xs text-muted">
         <ArrowRight className="h-3.5 w-3.5 text-accent" aria-hidden />

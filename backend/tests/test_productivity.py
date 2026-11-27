@@ -138,11 +138,16 @@ def test_follow_up_lifecycle(auth_client: TestClient, company: dict):
 def test_interviews_auto_round_and_outcomes(auth_client: TestClient, company: dict):
     application = _application(auth_client, company)
 
+    # Dates are relative to today: fixed calendar dates rot into the past and break "upcoming".
+    soon = (date.today() + timedelta(days=2)).isoformat()
+    later = (date.today() + timedelta(days=5)).isoformat()
+    past_day = (date.today() - timedelta(days=30)).isoformat()
+
     first = auth_client.post(
         "/api/v1/interviews",
         json={
             "application_id": application["id"],
-            "scheduled_at": "2026-11-20T10:30:00",
+            "scheduled_at": f"{soon}T10:30:00",
             "type": "technical",
             "timezone": "Asia/Kolkata",
             "interviewer": "Priya",
@@ -155,14 +160,14 @@ def test_interviews_auto_round_and_outcomes(auth_client: TestClient, company: di
 
     second = auth_client.post(
         "/api/v1/interviews",
-        json={"application_id": application["id"], "scheduled_at": "2026-11-25T15:00:00"},
+        json={"application_id": application["id"], "scheduled_at": f"{later}T15:00:00"},
     )
     assert second.status_code == 201, second.text
     assert second.json()["round_no"] == 2
 
     past = auth_client.post(
         "/api/v1/interviews",
-        json={"application_id": application["id"], "scheduled_at": "2026-01-05T09:00:00"},
+        json={"application_id": application["id"], "scheduled_at": f"{past_day}T09:00:00"},
     )
     assert past.status_code == 201
 

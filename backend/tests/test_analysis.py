@@ -91,7 +91,7 @@ def test_analysis_without_provider_fails_honestly(auth_client: TestClient, compa
     body = response.json()
     assert body["status"] == "failed"
     assert body["error_code"] == "ai_not_configured"
-    assert "GEMINI_API_KEY" in body["error_message"]
+    assert "backend/.env" in body["error_message"]
 
     stats = auth_client.get("/api/v1/analyses/stats").json()
     assert stats["total"] == 1

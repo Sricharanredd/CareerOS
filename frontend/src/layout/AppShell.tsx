@@ -18,12 +18,13 @@ import {
   X,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 
 import { useAuth } from "@/auth/AuthProvider";
 import { Avatar } from "@/components/ui/Avatar";
 import { IconButton } from "@/components/ui/Button";
+import { useOverlay } from "@/components/ui/Overlay";
 import { SegmentedControl } from "@/components/ui/Tabs";
 import type { Theme } from "@/lib/types";
 
@@ -216,6 +217,8 @@ function UserMenu() {
 export function AppShell() {
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const closeMobile = useCallback(() => setMobileOpen(false), []);
+  const mobilePanel = useOverlay(mobileOpen, closeMobile);
   const title = TITLES[location.pathname] ?? "CareerOS";
 
   useEffect(() => {
@@ -238,18 +241,25 @@ export function AppShell() {
         <div className="fixed inset-0 z-40 lg:hidden">
           <div
             className="absolute inset-0 bg-[#0a0e16]/50 backdrop-blur-[2px]"
-            onClick={() => setMobileOpen(false)}
+            onClick={closeMobile}
             aria-hidden
           />
-          <div className="absolute inset-y-0 left-0 flex w-72 flex-col border-r border-line bg-bg-elevated px-4 py-5">
+          <div
+            ref={mobilePanel}
+            tabIndex={-1}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Navigation"
+            className="absolute inset-y-0 left-0 flex w-72 flex-col border-r border-line bg-bg-elevated px-4 py-5 outline-none"
+          >
             <div className="flex items-center justify-between">
               <Brand />
-              <IconButton label="Close navigation" onClick={() => setMobileOpen(false)}>
+              <IconButton label="Close navigation" onClick={closeMobile}>
                 <X className="h-4 w-4" />
               </IconButton>
             </div>
             <div className="mt-8 flex-1">
-              <NavItems onNavigate={() => setMobileOpen(false)} />
+              <NavItems onNavigate={closeMobile} />
             </div>
           </div>
         </div>

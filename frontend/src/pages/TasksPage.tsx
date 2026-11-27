@@ -107,15 +107,17 @@ function TaskRow({
 }) {
   const done = task.status === "done";
   return (
-    <li className="flex items-start gap-3 border-b border-line px-4 py-3 last:border-b-0">
+    <li className="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-x-3 gap-y-2 border-b border-line px-4 py-3 last:border-b-0 sm:flex sm:gap-3">
       <button
         type="button"
         onClick={onToggle}
         disabled={busy}
         aria-label={done ? `Reopen ${task.title}` : `Complete ${task.title}`}
         aria-pressed={done}
+        data-compact
         className={clsx(
-          "mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border transition-colors",
+          "relative mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border transition-colors",
+          "before:absolute before:-inset-3 before:content-['']",
           done
             ? "border-success bg-success text-white"
             : "border-line-strong text-transparent hover:border-success hover:text-success/40",
@@ -124,7 +126,7 @@ function TaskRow({
         <Check className="h-3 w-3" aria-hidden />
       </button>
 
-      <div className="min-w-0 flex-1">
+      <div className="min-w-0 sm:flex-1">
         <p
           className={clsx(
             "text-sm font-medium",
@@ -166,7 +168,7 @@ function TaskRow({
         </div>
       </div>
 
-      <div className="flex shrink-0 items-center gap-1">
+      <div className="col-start-2 flex items-center justify-end gap-1 sm:col-auto sm:shrink-0 sm:justify-start">
         {!done && (
           <>
             <IconButton

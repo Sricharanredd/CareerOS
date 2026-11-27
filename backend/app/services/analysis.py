@@ -8,9 +8,12 @@ import logging
 from sqlalchemy import select
 from sqlalchemy.orm import Session, joinedload, undefer
 
-from app.ai.base import AnalysisRequest, ProviderError
+from app.ai.base import AnalysisRequest, ProviderError, ProviderPrivacyDenied
+from app.ai.health import health_store
 from app.ai.output import AnalysisOutput
+from app.ai.quota import quota_store
 from app.ai.registry import get_provider
+from app.ai.router import route_and_run
 from app.core.config import get_settings
 from app.core.errors import ConflictError, NotFoundError, UnprocessableError
 from app.core.security import utcnow
@@ -36,7 +39,9 @@ MIN_TEXT_CHARS = 200
 PROMPT_VERSION_FALLBACK = "analysis-v1"
 EXCERPT_CHARS = 320
 AI_NOT_CONFIGURED = (
-    "AI is not configured. Add GEMINI_API_KEY to backend/.env and restart the backend."
+    "AI is not available. No configured provider passed the privacy gate: set "
+    "AI_APPROVED_PROVIDERS and the matching credentials in backend/.env, then restart the "
+    "backend. Resume text is never sent to an unapproved provider."
 )
 
 
@@ -49,9 +54,14 @@ def submit(db: Session, owner_id: str, payload: AnalysisSubmit) -> tuple[Analysi
     _require_text(jd_text, "job description")
 
     settings = get_settings()
-    provider = get_provider()
-    provider_name = provider.name if provider else settings.ai_provider
-    model = provider.model if provider else settings.gemini_model
+    try:
+        provider = get_provider()
+    except ProviderPrivacyDenied as denied:
+        provider, denial = None, denied
+    else:
+        denial = None
+    provider_name = provider.name if provider else ""
+    model = provider.model if provider else ""
     prompt_version = settings.prompt_version or PROMPT_VERSION_FALLBACK
     text_hash = _sha(jd_text)
     input_hash = _sha(
@@ -109,8 +119,8 @@ def submit(db: Session, owner_id: str, payload: AnalysisSubmit) -> tuple[Analysi
 
     if provider is None:
         job.status = AnalysisStatus.FAILED
-        job.error_code = "ai_not_configured"
-        job.error_message = AI_NOT_CONFIGURED
+        job.error_code = denial.code if denial else "ai_not_configured"
+        job.error_message = denial.message if denial else AI_NOT_CONFIGURED
         job.finished_at = utcnow()
         db.commit()
         return _fresh(db, job), True
@@ -131,7 +141,11 @@ def run(job_id: str) -> None:
         job.attempts = (job.attempts or 0) + 1
         db.commit()
 
-        provider = get_provider()
+        try:
+            provider = get_provider()
+        except ProviderPrivacyDenied as exc:
+            _fail(db, job, code=exc.code, message=exc.message)
+            return
         if provider is None:
             _fail(
                 db,
@@ -142,7 +156,14 @@ def run(job_id: str) -> None:
             return
 
         try:
-            output = provider.analyze(_request_for(job))
+            settings = get_settings()
+            output = route_and_run(
+                provider,
+                _request_for(job),
+                settings,
+                health=health_store,
+                quota=quota_store,
+            )
             db.refresh(job)
             if job.status != AnalysisStatus.RUNNING:
                 return  # cancelled while the provider was working
